@@ -6,7 +6,6 @@
 
 extern volatile uint8_t oled_state;
 
-void LED_Init(void);
 void LED_Update(uint8_t current_mode, uint8_t countdown);
 
 #endif

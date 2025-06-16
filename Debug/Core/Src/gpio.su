@@ -1,0 +1,6 @@
+../Core/Src/gpio.c:24:6:GPIO_Init_LED	4	static
+../Core/Src/gpio.c:44:6:GPIO_Init_I2C	4	static
+../Core/Src/gpio.c:70:6:GPIO_Init_ADC	4	static
+../Core/Src/gpio.c:83:6:GPIO_Init_EXTI	4	static
+../Core/Src/gpio.c:101:6:GPIO_Init_PWM	4	static
+../Core/Src/gpio.c:116:6:GPIO_Init_All	8	static
