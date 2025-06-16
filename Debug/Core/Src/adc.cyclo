@@ -1,0 +1,4 @@
+../Drivers/CMSIS/Include/core_cm4.h:1684:22:__NVIC_EnableIRQ	2
+../Core/Src/adc.c:8:6:ADC_Init	1
+../Core/Src/adc.c:24:6:ADC_IRQHandler	2
+../Core/Src/adc.c:30:9:Mode_Update_From_ADC	4
