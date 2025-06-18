@@ -25,39 +25,39 @@ volatile uint8_t oled_state = 3;      // Trạng thái hiển thị OLED
  *        Tất cả được cấu hình để kích hoạt ngắt cạnh xuống.
  */
 void GPIO_EXTI_Init(void) {
-    // 1. Bật clock cho GPIOA và GPIOB
+    // Bật clock cho GPIOA và GPIOB
     RCC->AHB1ENR |= (1 << 0) | (1 << 1);  // GPIOAEN, GPIOBEN
 
-    // 2. Bật clock cho SYSCFG để cấu hình EXTI
+    // Bật clock cho SYSCFG để cấu hình EXTI
     RCC->APB2ENR |= (1 << 14);  // SYSCFGEN
 
-    // 3. Thiết lập các chân PA6, PA7, PB0, PB1 là input (MODER = 00)
+    // Thiết lập các chân PA6, PA7, PB0, PB1 là input (MODER = 00)
     GPIOA->MODER &= ~((3 << (6 * 2)) | (3 << (7 * 2)));
     GPIOB->MODER &= ~((3 << (0 * 2)) | (3 << (1 * 2)));
 
-    // 4. Kích hoạt điện trở kéo lên (pull-up)
+    // Kích hoạt điện trở kéo lên (pull-up)
     GPIOA->PUPDR |= (1 << (6 * 2)) | (1 << (7 * 2));
     GPIOB->PUPDR |= (1 << (0 * 2)) | (1 << (1 * 2));
 
-    // 5. Gán EXTI dòng 6, 7 cho chân PA6, PA7 (EXTICR[1])
+    // Gán EXTI dòng 6, 7 cho chân PA6, PA7 (EXTICR[1])
     SYSCFG->EXTICR[1] &= ~((0xF << 8) | (0xF << 12));  // PA = 0000
 
-    // 6. Gán EXTI dòng 0, 1 cho chân PB0, PB1 (EXTICR[0])
+    // Gán EXTI dòng 0, 1 cho chân PB0, PB1 (EXTICR[0])
     SYSCFG->EXTICR[0] &= ~((0xF << 0) | (0xF << 4));
     SYSCFG->EXTICR[0] |= (1 << 0) | (1 << 4);          // PB = 0001
 
-    // 7. Cho phép ngắt từ EXTI dòng 0,1,6,7
+    // Cho phép ngắt từ EXTI dòng 0,1,6,7
     EXTI->IMR |= (1 << 0) | (1 << 1) | (1 << 6) | (1 << 7);
 
-    // 8. Kích hoạt ngắt cạnh xuống (falling edge)
+    // Kích hoạt ngắt cạnh xuống (falling edge)
     EXTI->FTSR |= (1 << 0) | (1 << 1) | (1 << 6) | (1 << 7);
 
-    // 9. Kích hoạt ngắt trong NVIC
+    // Kích hoạt ngắt trong NVIC
     NVIC_EnableIRQ(EXTI9_5_IRQn);  // PA6, PA7
     NVIC_EnableIRQ(EXTI0_IRQn);    // PB0
     NVIC_EnableIRQ(EXTI1_IRQn);    // PB1
 
-    // 10. Thiết lập mức ưu tiên ngắt
+    // Thiết lập mức ưu tiên ngắt
     NVIC_SetPriority(EXTI9_5_IRQn, 0);  // Cao nhất
     NVIC_SetPriority(EXTI0_IRQn, 1);
     NVIC_SetPriority(EXTI1_IRQn, 1);
@@ -79,7 +79,7 @@ void EXTI9_5_IRQHandler(void) {
         return;
     }
 
-    // ==== Xử lý PA6: Tắt/Bật hệ thống ====
+    // Xử lý PA6: Tắt/Bật hệ thống
     if (EXTI->PR & (1 << 6)) {
         system_active ^= 1;  // Đảo trạng thái hệ thống
 
@@ -106,7 +106,7 @@ void EXTI9_5_IRQHandler(void) {
         EXTI->PR |= (1 << 6);  // Xóa cờ ngắt
     }
 
-    // ==== Xử lý PA7: Đặt countdown = 10s ====
+    // Xử lý PA7: Đặt countdown = 10s
     if (EXTI->PR & (1 << 7)) {
         if (system_active) {
             countdown = 10;
