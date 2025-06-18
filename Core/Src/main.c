@@ -48,7 +48,7 @@ int main(void) {
     while (1) {
         uint32_t current_time = GetTick();
 
-        // ✅ Cập nhật OLED mỗi 500ms, luôn hiển thị kể cả khi hệ thống bị tắt
+        // Cập nhật OLED mỗi 500ms, luôn hiển thị kể cả khi hệ thống bị tắt
         if ((current_time - last_display) >= 500) {
             switch (oled_state) {
                 case 0: // READY
@@ -74,13 +74,13 @@ int main(void) {
             last_display = current_time;
         }
 
-        // ❌ Nếu hệ thống đang bị tắt, bỏ qua toàn bộ xử lý logic
+        // Nếu hệ thống đang bị tắt, bỏ qua toàn bộ xử lý logic
         if (!system_active) {
             Delay_ms(10);
             continue;
         }
 
-        // ✅ Cập nhật PWM và LED mỗi 100ms
+        // Cập nhật PWM và LED mỗi 100ms
         if ((current_time - last_update) >= 100) {
             if (!button_pressed) {
                 // Đọc từ ADC để cập nhật mode
@@ -102,7 +102,7 @@ int main(void) {
             last_update = current_time;
         }
 
-        // ✅ Xử lý countdown mỗi 1000ms
+        // Xử lý countdown mỗi 1000ms
         if ((current_time - last_countdown) >= 1000) {
             if (oled_state == 1 && countdown > 0 && mode != 0) {
                 countdown--;
