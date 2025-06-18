@@ -1,8 +1,8 @@
-../Core/Src/oled.c:107:9:SSD1306_Command	16	static
-../Core/Src/oled.c:118:9:SSD1306_Data	16	static
-../Core/Src/oled.c:128:9:SSD1306_Init	48	static
-../Core/Src/oled.c:164:6:SSD1306_SetCursor	16	static
-../Core/Src/oled.c:174:6:SSD1306_Clear	16	static
-../Core/Src/oled.c:189:6:SSD1306_PrintChar	24	static
-../Core/Src/oled.c:214:6:SSD1306_PrintTextCentered	24	static
-../Core/Src/oled.c:232:6:SSD1306_DisplayStatus	48	static
+../Core/Src/oled.c:108:9:SSD1306_Command	16	static
+../Core/Src/oled.c:119:9:SSD1306_Data	16	static
+../Core/Src/oled.c:129:9:SSD1306_Init	48	static
+../Core/Src/oled.c:165:6:SSD1306_SetCursor	16	static
+../Core/Src/oled.c:175:6:SSD1306_Clear	16	static
+../Core/Src/oled.c:190:6:SSD1306_PrintChar	24	static
+../Core/Src/oled.c:215:6:SSD1306_PrintTextCentered	24	static
+../Core/Src/oled.c:233:6:SSD1306_DisplayStatus	48	static

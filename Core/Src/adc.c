@@ -1,71 +1,69 @@
-/* ==========================================================================================
- * File        : adc.c
- * Description : Khởi tạo và xử lý ADC1 đọc tín hiệu đầu vào chuyển mode hoạt động
- * MCU         : STM32F401CCU6
- * ==========================================================================================
- */
-
-
-/* ========================== [I] INCLUDE FILE ========================== */
+// ===============================
+// ========== FILE INCLUDE =======
+// ===============================
 
 #include "stm32f4xx.h"
 #include "adc.h"
-#include "system.h"
 
 
-/* ========================== [II] FUNC FILE ============================ */
-
-// Biến lưu trữ giá trị ADC mới nhất đọc được (cập nhật trong interrupt)
-volatile uint16_t adc_latest_value = 0;
+// ======================================
+// ======== FUNCTION DEFINITIONS ========
+// ======================================
 
 /**
- * @brief  Khởi tạo ADC1 để đọc tín hiệu analog từ PA0 (kênh 0)
+ * @brief Khởi tạo ADC1 đọc từ chân PA0 (kênh ADC_IN0)
  */
 void ADC_Init(void) {
-    // Bật clock ADC1 (nằm trên bus APB2)
-	RCC->APB2ENR |= (1 << 8);
+    // ===== Bật clock cho ADC1 (bit 8 của RCC->APB2ENR) =====
+    RCC->APB2ENR |= (1 << 8); // ADC1EN
 
-    // Chọn kênh đầu tiên trong regular sequence (SQR3: rank 1 -> channel 0)
+    // ===== Bật clock cho GPIOA (bit 0 của RCC->AHB1ENR) =====
+    RCC->AHB1ENR |= (1 << 0); // GPIOAEN
+
+    // ===== PA0 vào chế độ analog: MODER0 = 11 =====
+    GPIOA->MODER |= (3 << (0 * 2)); // Bit 1:0 = 11
+
+    // ===== Chọn kênh chuyển đổi: ADC1_IN0 -> SQR3[4:0] = 00000 =====
     ADC1->SQR3 = 0;
 
-    // Cấu hình thời gian lấy mẫu cho kênh 0: 480 cycles (tối đa - SMPR2[2:0] = 0b111)
-    ADC1->SMPR2 |= (7 << 0);
+    // ===== Cài đặt thời gian lấy mẫu cho kênh 0: 480 chu kỳ (SMPR2) =====
+    ADC1->SMPR2 |= (7 << 0); // SMP0 = 111
 
-    // Bật ADC (ADON = 1)
-    ADC1->CR2 |= (1 << 0);
-
-    // Kích hoạt ngắt khi kết thúc chuyển đổi (End of Conversion interrupt)
-    ADC1->CR1 |= (1 << 5);
-
-    // Bật ngắt ADC trong NVIC
-    NVIC_EnableIRQ(ADC_IRQn);
-
-    // Delay nhỏ sau khi bật ADC (datasheet yêu cầu để ADC ổn định)
-    Delay_ms(2);
+    // ===== Bật ADC1 (bit ADON trong CR2) =====
+    ADC1->CR2 |= (1 << 0); // ADON = 1
 }
 
+
 /**
- * @brief  Ngắt ADC: Đọc giá trị ADC khi chuyển đổi hoàn tất
+ * @brief Đọc giá trị từ kênh ADC đã cấu hình
+ * @return Giá trị 12-bit từ ADC1->DR
  */
-void ADC_IRQHandler(void) {
-    // Kiểm tra cờ EOC (End of Conversion)
-    if (ADC1->SR & (1 << 1)) {
-        adc_latest_value = ADC1->DR;  // Đọc giá trị ADC, tự động clear cờ EOC
-    }
+uint16_t ADC_Read(void) {
+    // Bắt đầu chuyển đổi (SWSTART = 1, bit 30 của CR2)
+    ADC1->CR2 |= (1 << 30);
+
+    // Chờ đến khi hoàn tất chuyển đổi (EOC = 1, bit 1 của SR)
+    while (!(ADC1->SR & (1 << 1)));
+
+    // Trả về kết quả đọc được
+    return ADC1->DR;
 }
 
+
 /**
- * @brief  Chuyển đổi giá trị ADC sang mode hệ thống
- * @retval Mode hệ thống (0, 1, 2, 3)
+ * @brief Cập nhật mode dựa trên giá trị ADC
+ * @return Mode tương ứng (0 đến 3)
  */
 uint8_t Mode_Update_From_ADC(void) {
-    uint16_t adc_value = adc_latest_value;
+    uint16_t adc_value = ADC_Read();
 
-    if (adc_value < 200) return 0;
-    else if (adc_value < 1365) return 1;
-    else if (adc_value < 2730) return 2;
-    else return 3;
+    if (adc_value < 200) return 0;         // Vùng tắt
+    else if (adc_value < 1365) return 1;   // 0.8V ~ mode 1
+    else if (adc_value < 2730) return 2;   // ~1.65V ~ mode 2
+    else return 3;                         // >2.2V ~ mode 3
 }
 
 
-/* =========================== [III] END FILE =========================== */
+// ===============================
+// =========== END FILE ==========
+// ===============================

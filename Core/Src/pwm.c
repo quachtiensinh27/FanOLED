@@ -1,75 +1,78 @@
-/* ==========================================================================================
- * File        : pwm.c
- * Description : Khởi tạo và điều khiển PWM bằng TIM4 Channel 2 (PB7)
- * MCU         : STM32F401CCU6
- * ==========================================================================================
- */
+// ===============================
+// ========== FILE INCLUDE =======
+// ===============================
+
+#include "stm32f4xx.h"   // Thư viện CMSIS cho STM32F4
+#include "pwm.h"         // Header cho pwm.c (khai báo PWM_Init, Update_PWM_From_Mode)
 
 
-/* ========================== [I] INCLUDE FILE ========================== */
-
-#include "stm32f4xx.h"
-#include "pwm.h"
-
-
-/* ========================== [II] FUNC FILE ============================ */
+// =======================================
+// ========== FUNCTION DEFINITIONS =======
+// =======================================
 
 /**
- * @brief  Khởi tạo PWM sử dụng Timer 4, Channel 2 (output: PB7)
+ * @brief Khởi tạo TIM4 kênh 2 để tạo tín hiệu PWM trên chân PB7
  *
- * - Tần số Timer gốc: 16MHz (APB1 clock)
- * - Prescaler: 1599  → f_timer = 16MHz / (1599 + 1) = 10kHz
- * - Auto-reload (ARR): 100 → Chu kỳ PWM = 100 counts (10kHz / 100 = 100Hz)
- * - PWM mode 1 (active high)
+ * TIM4_CH2 được ánh xạ với PB7 (Alternate Function 2 - AF2)
+ * Tần số PWM được tính bởi:
+ *     f_PWM = f_APB1 / ((PSC + 1) * (ARR + 1))
+ * Với f_APB1 = 16 MHz, PSC = 1599, ARR = 100 → f_PWM ≈ 100 Hz
  */
 void PWM_Init(void) {
-    // Bật clock cho TIM4 (trên bus APB1)
-	RCC->APB1ENR |= (1 << 2);
+    // 1. Bật clock cho GPIOB (PB7)
+    RCC->AHB1ENR |= (1 << 1);  // GPIOBEN = 1
 
-    // Cấu hình bộ chia tần số (Prescaler)
-    TIM4->PSC = 1599;  // Chia từ 16MHz về 10kHz
+    // 2. Bật clock cho TIM4 (trên bus APB1)
+    RCC->APB1ENR |= (1 << 2);  // TIM4EN = 1
 
-    // Cấu hình chu kỳ PWM (ARR = period)
-    TIM4->ARR = 100;   // PWM frequency ~100Hz
+    // 3. Cấu hình PB7 ở chế độ Alternate Function
+    GPIOB->MODER &= ~(3 << (7 * 2));   // Xóa 2 bit MODER7
+    GPIOB->MODER |=  (2 << (7 * 2));   // MODER7 = 10 (AF mode)
 
-    // Thiết lập giá trị duty cycle ban đầu (30%)
-    TIM4->CCR2 = 30;
+    // 4. Gán chức năng AF2 (TIM4_CH2) cho PB7
+    GPIOB->AFR[0] &= ~(0xF << (7 * 4)); // Xóa trước
+    GPIOB->AFR[0] |=  (2 << (7 * 4));   // AF2 cho PB7
 
-    // Cấu hình PWM Mode 1 trên kênh 2 (CCMR1 → OC2M = 110b)
-    TIM4->CCMR1 &= ~(7 << 12); // Xóa các bit OC2M trước
-    TIM4->CCMR1 |= (6 << 12); // PWM mode 1 (active high)
+    // 5. Cấu hình bộ định thời TIM4
+    TIM4->PSC = 1599;  // Prescaler: f_TIM = f_APB1 / (PSC + 1)
+    TIM4->ARR = 100;   // Auto-reload value: xác định chu kỳ PWM
+    TIM4->CCR2 = 0;    // Giá trị khởi đầu cho duty cycle = 0%
 
-    // Cho phép preload cho CCR2 (enable preload buffer)
-    TIM4->CCMR1 |= (1 << 11);
+    // 6. Cấu hình chế độ PWM mode 1 cho kênh 2
+    TIM4->CCMR1 &= ~(7 << 12);  // Xóa OC2M
+    TIM4->CCMR1 |=  (6 << 12);  // OC2M = 110 → PWM mode 1
 
-    // Bật kênh output compare 2 (enable output compare)
-    TIM4->CCER |= (1 << 4);
+    // 7. Kích hoạt preload cho CCR2 (đồng bộ hóa cập nhật)
+    TIM4->CCMR1 |= (1 << 11);   // OC2PE = 1
 
-    // Bật Timer 4 (counter enable)
-    TIM4->CR1 |= (1 << 0);
+    // 8. Cho phép kênh 2 xuất tín hiệu PWM ra chân PB7
+    TIM4->CCER |= (1 << 4);     // CC2E = 1
+
+    // 9. Bật bộ đếm TIM4 để bắt đầu hoạt động
+    TIM4->CR1 |= (1 << 0);      // CEN = 1
 }
 
 
 /**
- * @brief  Cập nhật duty cycle PWM theo mode hệ thống
+ * @brief Cập nhật độ rộng xung PWM theo chế độ (mode)
  *
- * Mapping mode:
- * - Mode 3 → 100% duty (CCR2 = 100)
- * - Mode 2 → 80% duty  (CCR2 = 80)
- * - Mode 1 → 60% duty  (CCR2 = 60)
- * - Mode 0 → 0% duty (tắt PWM)
- *
- * @param mode  Chế độ điều khiển (0~3)
+ * @param mode Giá trị từ 0 đến 3, ứng với mức độ duty cycle:
+ *             - 0: 0% (tắt)
+ *             - 1: 40%
+ *             - 2: 70%
+ *             - 3: 100%
  */
 void Update_PWM_From_Mode(uint8_t mode) {
     switch (mode) {
-        case 3: TIM4->CCR2 = 100; break;  // 100% tốc độ
-        case 2: TIM4->CCR2 = 80;  break;
-        case 1: TIM4->CCR2 = 60;  break;
-        case 0: TIM4->CCR2 = 0;   break;  // Dừng
-        default: TIM4->CCR2 = 0;  break;  // Trường hợp lỗi
+        case 3: TIM4->CCR2 = 100; break;  // 100% duty
+        case 2: TIM4->CCR2 = 70;  break;  // 70%
+        case 1: TIM4->CCR2 = 40;  break;  // 40%
+        case 0: TIM4->CCR2 = 0;   break;  // 0% duty (OFF)
+        default: TIM4->CCR2 = 0;  break;  // Giá trị không hợp lệ → OFF
     }
 }
 
 
-/* =========================== [III] END FILE =========================== */
+// =======================================
+// ============= END FILE ================
+// =======================================

@@ -1,28 +1,22 @@
-/* ==========================================================================================
- * File        : oled.c
- * Description : Thư viện điều khiển màn hình OLED SSD1306 qua I2C
- * MCU         : STM32F401CCU6
- * ==========================================================================================
- */
+// =================================
+// ========== FILE INCLUDE =========
+// =================================
+
+#include "oled.h"        // Header định nghĩa hàm giao tiếp OLED
+#include "i2c.h"         // Giao tiếp I2C để gửi lệnh/dữ liệu cho OLED
+#include <string.h>      // Dùng strlen để tính độ dài chuỗi
+#include <stdio.h>       // Dùng sprintf để format văn bản
+#include "system.h"      // Hàm Delay_ms (trì hoãn sau khi khởi tạo)
 
 
-/* ========================== [I] INCLUDE FILE ========================== */
+// =======================================
+// ========== FUNCTION DEFINITIONS =======
+// =======================================
 
-#include "oled.h"
-#include "i2c.h"
-#include <string.h>
-#include <stdio.h>
-#include "system.h"
-
-
-/* ========================== [II] FUNC FILE ============================ */
-
-/*
- * Bảng font 5x8 (mỗi ký tự 5 byte cột), hỗ trợ:
- * - A-Z (26 ký tự)
- * - a-z (26 ký tự)
- * - 0-9 (10 ký tự)
- * - Space (1 ký tự trắng)
+/**
+ * @brief Bảng font 5x8: mỗi ký tự được biểu diễn bằng 5 byte, mỗi byte là 1 cột pixel (8 dòng).
+ *        Dùng để hiển thị ký tự cơ bản: chữ cái, số, khoảng trắng.
+ *        Ví dụ: chữ 'A' ứng với 5 cột dữ liệu hiển thị.
  */
 const uint8_t font5x8[][5] = {
     // A–Z (0–25)
@@ -99,153 +93,145 @@ const uint8_t font5x8[][5] = {
 
 
 /**
- * @brief Gửi lệnh điều khiển SSD1306 (control byte = 0x00)
- *
- * @param cmd Lệnh SSD1306
- * @retval 1 thành công, 0 lỗi I2C
+ * @brief Gửi 1 lệnh điều khiển (command) tới OLED qua I2C
+ * @param cmd Lệnh cần gửi (ví dụ: bật/tắt, set địa chỉ, ...)
+ * @return 1 nếu thành công, 0 nếu lỗi
  */
 uint8_t SSD1306_Command(uint8_t cmd) {
-    return I2C_WriteByte(0x3C, 0x00, cmd);
+    // Gửi 1 byte command: control byte = 0x00 (lệnh)
+    return I2C_WriteByte(0x3C, 0x00, cmd); // 0x3C là địa chỉ I2C của SSD1306
 }
 
 
 /**
- * @brief Gửi dữ liệu hiển thị SSD1306 (control byte = 0x40)
- *
- * @param data Dữ liệu pixel
- * @retval 1 thành công, 0 lỗi I2C
+ * @brief Gửi 1 byte dữ liệu (data) tới OLED – dùng để hiển thị pixel
+ * @param data Byte dữ liệu hình ảnh (1 byte điều khiển 8 pixel dọc)
+ * @return 1 nếu thành công, 0 nếu lỗi
  */
 uint8_t SSD1306_Data(uint8_t data) {
+    // Gửi 1 byte data: control byte = 0x40 (dữ liệu hiển thị)
     return I2C_WriteByte(0x3C, 0x40, data);
 }
 
 
 /**
- * @brief Khởi tạo SSD1306 OLED theo chuỗi lệnh chuẩn datasheet
- *
- * Bao gồm: clock, charge pump, addressing mode, orientation, contrast...
+ * @brief Khởi tạo OLED theo chuỗi lệnh chuẩn của SSD1306
+ * @return 1 nếu khởi tạo thành công, 0 nếu lỗi
  */
 uint8_t SSD1306_Init(void) {
-    Delay_ms(100);  // Đợi OLED ổn định sau khi cấp nguồn
+    Delay_ms(100);  // Chờ nguồn ổn định trước khi bắt đầu
 
+    // Dãy lệnh khởi tạo SSD1306: cấu hình chế độ, tắt/mở, phân cực,...
     const uint8_t init_seq[] = {
         0xAE,       // Display OFF
         0xD5, 0x80, // Set display clock divide ratio/oscillator frequency
-        0xA8, 0x3F, // Set multiplex ratio (1/64 duty)
-        0xD3, 0x00, // Set display offset
-        0x40,       // Set start line address
+        0xA8, 0x3F, // Set multiplex ratio (1/64)
+        0xD3, 0x00, // Set display offset = 0
+        0x40,       // Set start line = 0
         0x8D, 0x14, // Enable charge pump
-        0x20, 0x00, // Memory addressing mode: Horizontal
-        0xA1,       // Set segment re-map
-        0xC8,       // COM output scan direction: remapped
-        0xDA, 0x12, // Set COM pins hardware configuration
-        0x81, 0xCF, // Set contrast control
-        0xD9, 0xF1, // Set pre-charge period
-        0xDB, 0x40, // Set VCOMH deselect level
-        0xA4,       // Entire display ON (resume)
-        0xA6,       // Normal display (not inverted)
+        0x20, 0x00, // Set memory addressing mode: Horizontal
+        0xA1,       // Set segment remap (flip horizontal)
+        0xC8,       // COM output scan direction: remap (flip vertical)
+        0xDA, 0x12, // COM pins configuration
+        0x81, 0xCF, // Contrast control
+        0xD9, 0xF1, // Pre-charge period
+        0xDB, 0x40, // VCOMH deselect level
+        0xA4,       // Entire display ON from RAM
+        0xA6,       // Normal display (không đảo màu)
         0xAF        // Display ON
     };
 
-    // Gửi toàn bộ chuỗi lệnh khởi tạo
+    // Gửi từng lệnh trong chuỗi khởi tạo
     for (int i = 0; i < sizeof(init_seq); i++) {
-        if (!SSD1306_Command(init_seq[i])) return 0;
+        if (!SSD1306_Command(init_seq[i])) return 0; // Nếu có lệnh lỗi => return fail
     }
     return 1;
 }
 
 
 /**
- * @brief Đặt vị trí con trỏ vẽ trên OLED (đơn vị cột, trang)
- *
- * @param col  Cột (0~127)
- * @param page Trang (0~7)
+ * @brief Đặt con trỏ pixel tại vị trí (col, page) để chuẩn bị vẽ dữ liệu
+ * @param col Cột (0–127)
+ * @param page Dòng theo trang (0–7), mỗi trang là 8 pixel theo chiều dọc
  */
 void SSD1306_SetCursor(uint8_t col, uint8_t page) {
-    SSD1306_Command(0xB0 + page);                  // Set page address
-    SSD1306_Command(0x00 + (col & 0x0F));          // Set lower column
-    SSD1306_Command(0x10 + ((col >> 4) & 0x0F));   // Set higher column
+    SSD1306_Command(0xB0 + page);             // Lệnh chọn page (dòng)
+    SSD1306_Command(0x00 + (col & 0x0F));     // Cột - 4 bit thấp
+    SSD1306_Command(0x10 + ((col >> 4) & 0x0F)); // Cột - 4 bit cao
 }
 
 
 /**
- * @brief Xóa toàn bộ nội dung OLED (clear screen)
+ * @brief Xóa toàn bộ màn hình OLED (vẽ toàn bộ bằng màu đen)
  */
 void SSD1306_Clear(void) {
     for (uint8_t page = 0; page < 8; page++) {
-        SSD1306_SetCursor(0, page);
+        SSD1306_SetCursor(0, page); // Di chuyển tới đầu mỗi dòng
         for (uint8_t col = 0; col < 128; col++) {
-            SSD1306_Data(0x00);
+            SSD1306_Data(0x00);     // Gửi giá trị 0 để tắt tất cả pixel
         }
     }
 }
 
 
 /**
- * @brief In 1 ký tự đơn lên OLED (font 5x8)
- *
- * @param ch Ký tự cần in (A-Z, a-z, 0-9, ký tự khác thành space)
+ * @brief In 1 ký tự ra màn hình OLED tại vị trí hiện tại
+ * @param ch Ký tự ASCII cần hiển thị ('A'–'Z', 'a'–'z', '0'–'9', ...)
  */
 void SSD1306_PrintChar(char ch) {
     const uint8_t* chr;
 
-    // Tra cứu mã font
-    if (ch >= 'A' && ch <= 'Z')
-        chr = font5x8[ch - 'A'];
-    else if (ch >= 'a' && ch <= 'z')
-        chr = font5x8[ch - 'a' + 26];
-    else if (ch >= '0' && ch <= '9')
-        chr = font5x8[ch - '0' + 52];
-    else
-        chr = font5x8[62];  // Ký tự khác → space
+    // Chọn dữ liệu font tương ứng với ký tự
+    if (ch >= 'A' && ch <= 'Z')       chr = font5x8[ch - 'A'];
+    else if (ch >= 'a' && ch <= 'z')  chr = font5x8[ch - 'a' + 26];
+    else if (ch >= '0' && ch <= '9')  chr = font5x8[ch - '0' + 52];
+    else                              chr = font5x8[62];  // space
 
-    // Gửi 5 byte font data + 1 cột trống để cách ký tự
+    // Gửi 5 byte bitmap của ký tự
     for (int i = 0; i < 5; i++) SSD1306_Data(chr[i]);
+
+    // Gửi thêm 1 cột trắng (khoảng cách giữa các ký tự)
     SSD1306_Data(0x00);
 }
 
 
 /**
- * @brief In chuỗi text căn giữa theo trang
- *
- * @param page Trang hiển thị (0-7)
- * @param str  Chuỗi cần in
+ * @brief In một chuỗi ký tự canh giữa theo chiều ngang tại 1 dòng (page)
+ * @param page Dòng cần in (0–7)
+ * @param str Chuỗi ký tự cần hiển thị
  */
 void SSD1306_PrintTextCentered(uint8_t page, const char* str) {
-    uint8_t len = strlen(str);
-    uint8_t col = (128 - len * 6) / 2;  // Tính toán căn giữa
-
-    SSD1306_SetCursor(col, page);
-    while (*str)
-        SSD1306_PrintChar(*str++);
+    uint8_t len = strlen(str);                 // Tính độ dài chuỗi
+    uint8_t col = (128 - len * 6) / 2;         // Tính vị trí canh giữa (5 byte font + 1 byte khoảng trắng)
+    SSD1306_SetCursor(col, page);              // Di chuyển con trỏ tới vị trí canh giữa
+    while (*str) SSD1306_PrintChar(*str++);    // In từng ký tự
 }
 
 
 /**
- * @brief In trạng thái hệ thống lên OLED
- *
- * Gồm 3 dòng:
- * - Tiêu đề: "DEVICE STATUS"
- * - Mode hiện tại
- * - Countdown còn lại hoặc trạng thái READY
+ * @brief Hiển thị trạng thái thiết bị (mode hiện tại và thời gian)
+ * @param current_mode Chế độ hiện tại (ví dụ: 1–3)
+ * @param seconds_left Số giây còn lại (nếu = 0 thì hiển thị READY)
  */
 void SSD1306_DisplayStatus(uint8_t current_mode, uint8_t seconds_left) {
-    char buffer[32];
+    char buffer[32];                        // Chuỗi tạm để format thông tin
 
-    SSD1306_Clear();
+    SSD1306_Clear();                        // Xóa toàn bộ màn hình
 
-    SSD1306_PrintTextCentered(1, "DEVICE STATUS");
+    SSD1306_PrintTextCentered(1, "DEVICE STATUS"); // In tiêu đề
 
-    sprintf(buffer, "MODE %d", current_mode);
+    sprintf(buffer, "MODE %d", current_mode);      // Ghi mode hiện tại
     SSD1306_PrintTextCentered(3, buffer);
 
     if (seconds_left > 0)
-        sprintf(buffer, "TIME %ds", seconds_left);
+        sprintf(buffer, "TIME %ds", seconds_left); // Ghi thời gian đếm ngược
     else
-        sprintf(buffer, "READY");
+        sprintf(buffer, "READY");                  // Nếu hết giờ thì báo sẵn sàng
 
     SSD1306_PrintTextCentered(5, buffer);
 }
 
 
-/* =========================== [III] END FILE =========================== */
+// =======================================
+// ============= END FILE ================
+// =======================================

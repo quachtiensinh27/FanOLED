@@ -1,53 +1,53 @@
-/* ==========================================================================================
- * File        : led.c
- * Description : Điều khiển bật tắt LED trạng thái theo mode và countdown
- * MCU         : STM32F401CCU6
- * ==========================================================================================
- */
+// =================================
+// ========== FILE INCLUDE =========
+// =================================
+
+#include "stm32f4xx.h"   // Thư viện CMSIS của STM32F4
+#include "led.h"         // Header cho led.c (khai báo LED_Init, LED_Update)
 
 
-/* ========================== [I] INCLUDE FILE ========================== */
+// ====================================
+// ======== FUNCTION DEFINITIONS ======
+// ====================================
 
-#include "stm32f4xx.h"
-#include "led.h"
-
-
-/* ========================== [II] FUNC FILE ============================ */
-
-// Biến toàn cục dùng chung từ các module khác (oled_state)
-extern volatile uint8_t oled_state;
 
 /**
- * @brief  Cập nhật trạng thái LED theo mode và countdown
- *
- * LED sử dụng:
- * - PA1: LED cho mode 1
- * - PA2: LED cho mode 2
- * - PA3: LED cho mode 3
- *
- * Logic:
- * - Nếu đang đếm ngược (countdown > 0) hoặc ở chế độ INFINITE (oled_state == 3)
- *   thì LED mới được phép bật theo mode hiện tại.
- * - Nếu không thì tắt toàn bộ LED.
- *
- * @param  current_mode  Mode hiện tại (0~3)
- * @param  countdown     Thời gian còn lại (s)
+ * @brief Khởi tạo các chân LED (PA1, PA2, PA3) làm output push-pull
+ *        Dùng để điều khiển LED qua thanh ghi GPIOA
  */
-void LED_Update(uint8_t current_mode, uint8_t countdown) {
-    // Tắt toàn bộ LED trước mỗi lần cập nhật (reset bit PA1, PA2, PA3)
+void LED_Init(void) {
+    // Bật clock cho GPIOA (bit 0 của RCC->AHB1ENR)
+    RCC->AHB1ENR |= (1 << 0); // GPIOAEN
+
+    // Thiết lập PA1, PA2, PA3 là output mode (MODER = 01)
+    GPIOA->MODER &= ~((3 << (1 * 2)) | (3 << (2 * 2)) | (3 << (3 * 2))); // Xóa trước
+    GPIOA->MODER |=  (1 << (1 * 2)) | (1 << (2 * 2)) | (1 << (3 * 2));   // Đặt lại = 01
+
+    // Thiết lập kiểu output là push-pull (OTYPER = 0)
+    GPIOA->OTYPER &= ~((1 << 1) | (1 << 2) | (1 << 3));
+}
+
+
+/**
+ * @brief Cập nhật trạng thái LED theo chế độ hiện tại
+ *        Chỉ bật 1 trong 3 LED tùy theo current_mode
+ *
+ * @param current_mode Chế độ hiện tại (1: LED1, 2: LED2, 3: LED3)
+ */
+void LED_Update(uint8_t current_mode) {
+    // Tắt tất cả LED (clear bit PA1, PA2, PA3)
     GPIOA->ODR &= ~((1 << 1) | (1 << 2) | (1 << 3));
 
-    // Nếu không trong chế độ sáng LED thì thoát
-    if (countdown == 0 && oled_state != 3) return;
-
-    // Bật LED tương ứng với mode
+    // Bật LED tương ứng với chế độ
     switch (current_mode) {
-        case 1: GPIOA->ODR |= (1 << 1); break;  // Mode 1 → LED1 (PA1)
-        case 2: GPIOA->ODR |= (1 << 2); break;  // Mode 2 → LED2 (PA2)
-        case 3: GPIOA->ODR |= (1 << 3); break;  // Mode 3 → LED3 (PA3)
-        default: break;                         // Mode 0: không bật LED
+        case 1: GPIOA->ODR |= (1 << 1); break;  // Bật LED1 (PA1)
+        case 2: GPIOA->ODR |= (1 << 2); break;  // Bật LED2 (PA2)
+        case 3: GPIOA->ODR |= (1 << 3); break;  // Bật LED3 (PA3)
+        default: break;  // Không bật LED nào nếu mode không hợp lệ
     }
 }
 
 
-/* =========================== [III] END FILE =========================== */
+// =================================
+// =========== END FILE ===========
+// =================================

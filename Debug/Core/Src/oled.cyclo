@@ -1,8 +1,8 @@
-../Core/Src/oled.c:107:9:SSD1306_Command	1
-../Core/Src/oled.c:118:9:SSD1306_Data	1
-../Core/Src/oled.c:128:9:SSD1306_Init	3
-../Core/Src/oled.c:164:6:SSD1306_SetCursor	1
-../Core/Src/oled.c:174:6:SSD1306_Clear	3
-../Core/Src/oled.c:189:6:SSD1306_PrintChar	8
-../Core/Src/oled.c:214:6:SSD1306_PrintTextCentered	2
-../Core/Src/oled.c:232:6:SSD1306_DisplayStatus	2
+../Core/Src/oled.c:108:9:SSD1306_Command	1
+../Core/Src/oled.c:119:9:SSD1306_Data	1
+../Core/Src/oled.c:129:9:SSD1306_Init	3
+../Core/Src/oled.c:165:6:SSD1306_SetCursor	1
+../Core/Src/oled.c:175:6:SSD1306_Clear	3
+../Core/Src/oled.c:190:6:SSD1306_PrintChar	8
+../Core/Src/oled.c:215:6:SSD1306_PrintTextCentered	2
+../Core/Src/oled.c:233:6:SSD1306_DisplayStatus	2
