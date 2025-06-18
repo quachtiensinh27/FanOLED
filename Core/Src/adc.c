@@ -14,22 +14,22 @@
  * @brief Khởi tạo ADC1 đọc từ chân PA0 (kênh ADC_IN0)
  */
 void ADC_Init(void) {
-    // ===== Bật clock cho ADC1 (bit 8 của RCC->APB2ENR) =====
+    // Bật clock cho ADC1 (bit 8 của RCC->APB2ENR)
     RCC->APB2ENR |= (1 << 8); // ADC1EN
 
-    // ===== Bật clock cho GPIOA (bit 0 của RCC->AHB1ENR) =====
+    // Bật clock cho GPIOA (bit 0 của RCC->AHB1ENR)
     RCC->AHB1ENR |= (1 << 0); // GPIOAEN
 
-    // ===== PA0 vào chế độ analog: MODER0 = 11 =====
+    // PA0 vào chế độ analog: MODER0 = 11
     GPIOA->MODER |= (3 << (0 * 2)); // Bit 1:0 = 11
 
-    // ===== Chọn kênh chuyển đổi: ADC1_IN0 -> SQR3[4:0] = 00000 =====
+    // Chọn kênh chuyển đổi: ADC1_IN0 -> SQR3[4:0] = 00000
     ADC1->SQR3 = 0;
 
-    // ===== Cài đặt thời gian lấy mẫu cho kênh 0: 480 chu kỳ (SMPR2) =====
+    // Cài đặt thời gian lấy mẫu cho kênh 0: 480 chu kỳ (SMPR2)
     ADC1->SMPR2 |= (7 << 0); // SMP0 = 111
 
-    // ===== Bật ADC1 (bit ADON trong CR2) =====
+    // Bật ADC1 (bit ADON trong CR2)
     ADC1->CR2 |= (1 << 0); // ADON = 1
 }
 
